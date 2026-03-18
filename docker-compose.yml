@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Run two GOTA nodes + the simulation harness.
+# This tests RQ1 (DHT between two real peers) out of the box.
+#
+# Usage:
+#   docker compose up           # start both nodes
+#   python simulation/run_simulation.py --node http://localhost:3000
+
+services:
+
+  gota-node-1:
+    build:
+      context: ./node
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+      - "4000:4000"  # P2P
+    environment:
+      - PORT=3000
+      - DATA_DIR=/data
+    volumes:
+      - gota-data-1:/data
+
+  gota-node-2:
+    build:
+      context: ./node
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+      - "4001:4001"  # P2P
+    environment:
+      - PORT=3001
+      - DATA_DIR=/data
+      # Bootstrap against node 1
+      - BOOTSTRAP_PEERS=/ip4/gota-node-1/tcp/4000
+    volumes:
+      - gota-data-2:/data
+    depends_on:
+      - gota-node-1
+
+volumes:
+  gota-data-1:
+  gota-data-2:

@@ -1,0 +1,13 @@
+# Node
+node/node_modules/
+node/dist/
+node/.env
+
+# Python
+__pycache__/
+*.pyc
+simulation/results/
+
+# Data
+/tmp/
+*.log

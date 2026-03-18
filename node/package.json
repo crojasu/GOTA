@@ -1,0 +1,32 @@
+{
+  "name": "gota-node",
+  "version": "0.1.0",
+  "description": "GOTA — P2P node using Helia/libp2p. Research prototype.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "helia": "^4.2.6",
+    "@helia/unixfs": "^3.0.6",
+    "libp2p": "^1.4.3",
+    "@libp2p/tcp": "^9.0.10",
+    "@libp2p/webrtc": "^4.0.21",
+    "@libp2p/bootstrap": "^10.0.18",
+    "@libp2p/kad-dht": "^12.0.12",
+    "@libp2p/identify": "^2.0.1",
+    "@chainsafe/libp2p-noise": "^15.0.0",
+    "@chainsafe/libp2p-yamux": "^6.0.2",
+    "blockstore-fs": "^1.1.7",
+    "datastore-fs": "^9.1.7",
+    "fastify": "^4.26.2",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.2",
+    "@types/node": "^20.11.24"
+  }
+}
