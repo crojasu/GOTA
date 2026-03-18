@@ -150,7 +150,7 @@ AGPL-3.0
 
 ## Author
 
-Catalina Rojas Ugarte — Berlin, Germany  
+[Catalina Rojas Ugarte — Berlin, Germany](https://crojasu.github.io/)   
 Senior Software Engineer  
 Founder of [Femicide Media Watch](https://femicide-watch.up.railway.app)  
 github.com/crojasu
