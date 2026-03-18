@@ -6,7 +6,6 @@ node/.env
 # Python
 __pycache__/
 *.pyc
-simulation/results/
 
 # Data
 /tmp/
