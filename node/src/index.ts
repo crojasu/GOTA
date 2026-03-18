@@ -24,6 +24,7 @@ import { yamux } from '@chainsafe/libp2p-yamux'
 import { kadDHT } from '@libp2p/kad-dht'
 import { identify } from '@libp2p/identify'
 import { bootstrap } from '@libp2p/bootstrap'
+import { mdns } from '@libp2p/mdns'
 import { FsBlockstore } from 'blockstore-fs'
 import { FsDatastore } from 'datastore-fs'
 import Fastify from 'fastify'
@@ -114,6 +115,7 @@ async function createGotaNode() {
     services: {
       identify: identify(),
       dht: kadDHT({ clientMode: false }),
+      mdns: mdns(),  // Auto-discovers peers on local network
       ...(BOOTSTRAP_PEERS.length > 0 ? {
         bootstrap: bootstrap({ list: BOOTSTRAP_PEERS })
       } : {})
@@ -606,7 +608,39 @@ async function startAPI(
   })
 
   /**
-   * GET /peers
+   * POST /connect
+   * Directly dial a peer by multiaddr.
+   * Bypasses DHT discovery — works reliably on localhost.
+   * Body: { multiaddr: string }
+   *
+   * Research: this is the manual bootstrap for RQ1 testing.
+   */
+  app.post<{
+    Body: { multiaddr: string }
+  }>('/connect', async (req, reply) => {
+    const { multiaddr: ma } = req.body
+    if (!ma) return reply.code(400).send({ error: 'multiaddr required' })
+
+    try {
+      const { multiaddr } = await import('@multiformats/multiaddr')
+      const addr = multiaddr(ma)
+      await libp2p.dial(addr)
+      const peers = libp2p.getPeers()
+      return {
+        success: true,
+        connectedTo: ma,
+        totalPeers: peers.length,
+        researchNote: 'RQ1: direct dial bypasses DHT — use for localhost testing',
+      }
+    } catch (err: any) {
+      return reply.code(500).send({
+        error: err.message,
+        researchNote: 'RQ1: direct dial failed — check multiaddr format',
+      })
+    }
+  })
+
+  /**
    * Returns connected peers and multiaddresses.
    * Used by simulation to understand network topology.
    */
