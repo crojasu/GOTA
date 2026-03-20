@@ -11,6 +11,7 @@
   "dependencies": {
     "@chainsafe/libp2p-noise": "^15.0.0",
     "@chainsafe/libp2p-yamux": "^6.0.2",
+    "@fastify/static": "^7.0.4",
     "@helia/unixfs": "^3.0.6",
     "@libp2p/bootstrap": "^10.0.18",
     "@libp2p/identify": "^2.0.1",
@@ -20,11 +21,16 @@
     "@libp2p/webrtc": "^4.0.21",
     "@multiformats/multiaddr": "^13.0.1",
     "blockstore-fs": "^1.1.7",
+    "corestore": "^7.9.1",
     "datastore-fs": "^9.1.7",
     "fastify": "^4.26.2",
     "helia": "^4.2.6",
+    "hypercore": "^11.27.14",
+    "hyperdrive": "^13.3.0",
+    "hyperswarm": "^4.17.0",
     "libp2p": "^1.4.3",
-    "tweetnacl": "^1.0.3"
+    "tweetnacl": "^1.0.3",
+    "webtorrent": "^2.8.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

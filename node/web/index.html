@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GOTA</title>
+  <meta name="description" content="Search and share files across decentralized networks">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #334155;
+      --border: #334155;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #7dd3fc;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --error: #f87171;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Layout ─────────────────────────── */
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header h1 span { color: var(--accent); }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      font-size: 0.9rem;
+    }
+
+    /* ── Status bar ─────────────────────── */
+
+    .status-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      background: var(--surface);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--error);
+    }
+
+    .status-dot.ok { background: var(--success); }
+    .status-dot.degraded { background: var(--warning); }
+
+    /* ── Search ──────────────────────────── */
+
+    .search-section {
+      margin-bottom: 2rem;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 0;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .search-box:focus-within {
+      border-color: var(--accent);
+    }
+
+    .search-box input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text);
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .search-box input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-box button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 0 1.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .search-box button:hover {
+      background: var(--accent-hover);
+    }
+
+    .search-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+
+    /* ── Upload ──────────────────────────── */
+
+    .upload-section {
+      margin-bottom: 2rem;
+    }
+
+    .section-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .drop-zone-text {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .drop-zone-text strong {
+      color: var(--accent);
+    }
+
+    .upload-options {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .protocol-toggle {
+      display: flex;
+      background: var(--surface);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .protocol-toggle label {
+      padding: 0.5rem 0.9rem;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s;
+      border-right: 1px solid var(--border);
+    }
+
+    .protocol-toggle label:last-child { border-right: none; }
+
+    .protocol-toggle input { display: none; }
+
+    .protocol-toggle input:checked + span {
+      color: var(--accent);
+    }
+
+    .protocol-toggle label:has(input:checked) {
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent);
+    }
+
+    /* ── Results ──────────────────────────── */
+
+    .result-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .result-filename {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .protocol-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    .protocol-badge.ipfs {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+    }
+
+    .protocol-badge.bittorrent {
+      background: rgba(74, 222, 128, 0.15);
+      color: var(--success);
+    }
+
+    .protocol-badge.hypercore {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--warning);
+    }
+
+    .result-id {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 0.5rem;
+    }
+
+    .result-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-secondary {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover { background: var(--border); }
+
+    /* ── Toast ────────────────────────────── */
+
+    .toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--text);
+      animation: slideIn 0.2s ease;
+      max-width: 360px;
+    }
+
+    .toast.error { border-color: var(--error); }
+    .toast.success { border-color: var(--success); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── Loading ──────────────────────────── */
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ── Hidden file input ────────────────── */
+
+    #file-input { display: none; }
+
+    /* ── Responsive ───────────────────────── */
+
+    @media (max-width: 480px) {
+      .container { padding: 1.25rem 1rem; }
+      header h1 { font-size: 1.5rem; }
+      .result-meta { flex-direction: column; gap: 0.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span>GOTA</span></h1>
+      <p>Search and share files across decentralized networks</p>
+    </header>
+
+    <!-- Status bar -->
+    <div class="status-bar" id="status-bar"></div>
+
+    <!-- Search -->
+    <div class="search-section">
+      <div class="search-box">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Paste a CID, infohash, or magnet link..."
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="search-btn">Download</button>
+      </div>
+      <div class="search-hint">
+        IPFS CIDs (bafkrei...), BitTorrent infohashes (40-char hex), and Hypercore keys (64-char hex) auto-detected
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="upload-section">
+      <div class="section-label">Upload</div>
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-zone-text">
+          <strong>Drop a file here</strong> or click to browse
+        </div>
+      </div>
+      <input type="file" id="file-input">
+      <div class="upload-options">
+        <div class="protocol-toggle">
+          <label>
+            <input type="radio" name="protocol" value="all" checked>
+            <span>All networks</span>
+          </label>
+          <label>
+            <input type="radio" name="protocol" value="ipfs">
+            <span>IPFS</span>
+          </label>
+          <label>
+            <input type="radio" name="protocol" value="bittorrent">
+            <span>BitTorrent</span>
+          </label>
+          <label>
+            <input type="radio" name="protocol" value="hypercore">
+            <span>Hypercore</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results"></div>
+  </div>
+
+  <div class="toast-container" id="toasts"></div>
+
+  <script>
+    const API = '';  // Same origin
+
+    // ── Status polling ────────────────────
+
+    async function updateStatus() {
+      try {
+        const res = await fetch(`${API}/protocols`);
+        const data = await res.json();
+        const bar = document.getElementById('status-bar');
+        bar.innerHTML = data.available.map(a => `
+          <div class="status-pill">
+            <div class="status-dot ${a.status}"></div>
+            ${a.name} &middot; ${a.peers} peer${a.peers !== 1 ? 's' : ''}
+          </div>
+        `).join('');
+      } catch {
+        document.getElementById('status-bar').innerHTML = `
+          <div class="status-pill">
+            <div class="status-dot"></div>
+            Gateway offline
+          </div>
+        `;
+      }
+    }
+
+    updateStatus();
+    setInterval(updateStatus, 5000);
+
+    // ── Search / Download ─────────────────
+
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+
+    searchBtn.addEventListener('click', () => doDownload());
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') doDownload();
+    });
+
+    async function doDownload() {
+      const id = searchInput.value.trim();
+      if (!id) return;
+
+      // Extract infohash from magnet link
+      let contentId = id;
+      const magnetMatch = id.match(/btih:([a-f0-9]{40})/i);
+      if (magnetMatch) contentId = magnetMatch[1];
+
+      showLoading('Fetching from network...');
+
+      try {
+        const res = await fetch(`${API}/download/${encodeURIComponent(contentId)}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Download failed');
+        }
+        const data = await res.json();
+
+        // Decode base64 content and trigger download
+        const bytes = base64ToBytes(data.content);
+        const blob = new Blob([bytes]);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `gota-${contentId.slice(0, 12)}`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showResult({
+          filename: `gota-${contentId.slice(0, 12)}`,
+          id: contentId,
+          protocol: data.protocol,
+          sizeBytes: data.sizeBytes,
+          latencyMs: data.dhtLatencyMs,
+          action: 'downloaded',
+        });
+
+        toast('File downloaded', 'success');
+      } catch (err) {
+        clearResults();
+        toast(err.message, 'error');
+      }
+    }
+
+    // ── Upload ────────────────────────────
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) uploadFile(fileInput.files[0]);
+      fileInput.value = '';
+    });
+
+    async function uploadFile(file) {
+      const protocol = document.querySelector('input[name="protocol"]:checked').value;
+      const content = await fileToBase64(file);
+
+      showLoading(`Uploading to ${protocol === 'all' ? 'all networks' : protocol}...`);
+
+      try {
+        const endpoint = protocol === 'all' ? '/upload/all' : '/upload';
+        const body = { filename: file.name, content };
+        if (protocol !== 'all') body.protocol = protocol;
+
+        const res = await fetch(`${API}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Upload failed');
+        }
+
+        const data = await res.json();
+
+        if (protocol === 'all') {
+          // Multiple results
+          clearResults();
+          data.ids.forEach(item => {
+            showResult({
+              filename: file.name,
+              id: item.id,
+              protocol: item.protocol,
+              sizeBytes: data.sizeBytes,
+              action: 'uploaded',
+            });
+          });
+          toast(`Uploaded to ${data.protocols.length} networks`, 'success');
+        } else {
+          showResult({
+            filename: file.name,
+            id: data.cid,
+            protocol: data.protocol,
+            sizeBytes: data.sizeBytes,
+            action: 'uploaded',
+          });
+          toast(`Uploaded to ${data.protocol}`, 'success');
+        }
+      } catch (err) {
+        clearResults();
+        toast(err.message, 'error');
+      }
+    }
+
+    // ── UI Helpers ────────────────────────
+
+    function showResult({ filename, id, protocol, sizeBytes, latencyMs, action }) {
+      const results = document.getElementById('results');
+      // Remove loading indicator if present
+      const loader = results.querySelector('.loading-text');
+      if (loader) loader.remove();
+
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="result-header">
+          <div class="result-filename">${escapeHtml(filename)}</div>
+          <span class="protocol-badge ${protocol}">${protocol}</span>
+        </div>
+        <div class="result-id">${escapeHtml(id)}</div>
+        <div class="result-meta">
+          <span>${formatBytes(sizeBytes)}</span>
+          ${latencyMs != null ? `<span>${latencyMs}ms latency</span>` : ''}
+          <span>${action}</span>
+        </div>
+        <div class="result-actions">
+          <button class="btn btn-secondary" onclick="copyToClipboard('${escapeHtml(id)}')">
+            Copy ID
+          </button>
+        </div>
+      `;
+      results.prepend(card);
+    }
+
+    function showLoading(text) {
+      clearResults();
+      document.getElementById('results').innerHTML = `
+        <div class="loading-text"><span class="spinner"></span> ${text}</div>
+      `;
+    }
+
+    function clearResults() {
+      document.getElementById('results').innerHTML = '';
+    }
+
+    function toast(message, type = '') {
+      const container = document.getElementById('toasts');
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        toast('Copied to clipboard', 'success');
+      });
+    }
+
+    // ── Utilities ─────────────────────────
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function base64ToBytes(base64) {
+      const binStr = atob(base64);
+      const bytes = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+      return bytes;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${sizes[i]}`;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ── Service Worker registration ───────
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

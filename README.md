@@ -1,8 +1,8 @@
-# GOTA 💧
+# GOTA
 
-**Decentralized P2P Protocol for Uncensorable File Sharing**
+**Unified P2P Gateway — One interface for all decentralized networks**
 
-> *A drop of water finds its way through any crack.*  
+> *A drop of water finds its way through any crack.*
 > No server to shut down. No URL to block. No company to pressure.
 
 Research prototype — NLnet NGI Zero Commons Fund application, April 2026.
@@ -11,136 +11,205 @@ Research prototype — NLnet NGI Zero Commons Fund application, April 2026.
 
 ## The problem
 
-Documents like the Epstein files, the Panama Papers, and countless human rights archives have been suppressed or erased because they lived on servers with a single point of failure: a URL that could be blocked, a company that could be pressured, a server that could be seized.
+The technology for censorship-resistant file sharing already exists — IPFS, BitTorrent, Hypercore — but nobody can use it. Civil society organizations depend on Google Drive, Dropbox, and WeTransfer because decentralized alternatives require CLI tools, arcane configuration, and protocol-specific knowledge.
 
-GOTA eliminates the server from the equation.
-
-Civil society organizations currently depend on Google Drive, Dropbox, and WeTransfer — centralized services that can be taken down, surveilled, or blocked. Self-hosted alternatives (Nextcloud) require a server administrator and create a single point of failure. GOTA is what these tools cannot be: infrastructure with no central server to attack.
+GOTA is the missing usability layer. One web interface to search, upload, and download files across multiple P2P networks — without knowing what a CID, infohash, or Hypercore key is.
 
 ---
 
-## Open research questions
-
-GOTA investigates four problems in distributed systems and applied cryptography that remain without a complete, documented, open-source solution for civil society use cases:
-
-**RQ1 — Resilient P2P federation without always-online nodes**  
-libp2p's circuit relay exists but assumes reliable connectivity. How do you maintain content availability in a DHT network where most nodes are consumer devices offline the majority of the time — without a central coordinator, and without relay nodes reading the encrypted content they store?
-
-**RQ2 — Usable group access control without key management burden**  
-MLS/TreeKEM (RFC 9420) requires either a key server or client-side state that breaks on device loss. How do you implement capability delegation so non-technical users can join/leave private circles and recover access after device loss — without a key server?
-
-**RQ3 — Browser-native P2P nodes**  
-Browsers cannot receive incoming connections. How does a PWA participate meaningfully as a P2P node using WebRTC datachannels and service workers — and what is the minimum viable companion relay node?
-
-**RQ4 — Content moderation without central authority**  
-A permanent public layer raises a governance problem: how does a serverless network handle illegal content without a central moderator?
-
----
-
-## Architecture
+## How it works
 
 ```
-Public commons layer    → Open content, permanent, uncensorable
-Private circles layer   → E2E encrypted groups, no server to subpoena
-Browser PWA             → No installation required
-Companion relay node    → Docker, 5 minutes, strengthens the network
+┌──────────────────────────────────────────────┐
+│              GOTA Web (PWA)                   │
+│  Search bar ─ Upload ─ Protocol selector      │
+└──────────────────┬───────────────────────────┘
+                   │ REST API
+┌──────────────────▼───────────────────────────┐
+│            GOTA Gateway                       │
+│  ┌──────────────────────────────────────────┐ │
+│  │         Protocol Registry                 │ │
+│  │  ┌───────┐  ┌──────────┐  ┌───────────┐ │ │
+│  │  │ IPFS  │  │BitTorrent│  │ Hypercore  │ │ │
+│  │  │ Helia │  │WebTorrent│  │ Hyperdrive │ │ │
+│  │  └───────┘  └──────────┘  └───────────┘ │ │
+│  └──────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────┐ │
+│  │  Circles — E2E encrypted groups          │ │
+│  │  (protocol-agnostic, encrypt before      │ │
+│  │   routing to any network)                │ │
+│  └──────────────────────────────────────────┘ │
+└───────────────────────────────────────────────┘
 ```
 
-Files are encrypted locally before leaving the device. Governments and third parties receive only encrypted chunks — mathematically useless without the circle key.
+- **Upload once, seed everywhere** — a single file is published to IPFS, BitTorrent, and Hypercore simultaneously
+- **Auto-detect on download** — paste a CID, infohash, or Hypercore key and GOTA routes to the right protocol
+- **Circles** — E2E encrypted groups; content is encrypted before reaching any network
+- **No install** — runs as a PWA in any browser
 
 ---
 
-## This repository
-
-### `node/` — Real P2P node (TypeScript/Helia)
-
-A working Helia/libp2p node with a REST API. Measures real DHT latency, implements nacl encryption for private circles, and exposes research metrics for all three R&D questions.
+## Quick start
 
 ```bash
 cd node
 npm install
 npm run dev
-# Node running on port 3000, P2P on port 4000
+# Open http://localhost:3000
 ```
 
-```bash
-# Health check
-curl http://localhost:3000/health
+The web UI lets you:
+- Drag-and-drop upload to one or all networks
+- Paste any content ID to download
+- See live protocol status and peer counts
 
-# Upload a file to the DHT
+---
+
+## API
+
+### Content operations
+
+```bash
+# Upload to a specific protocol
 curl -X POST http://localhost:3000/upload \
   -H "Content-Type: application/json" \
-  -d '{"filename":"test.txt","content":"SGVsbG8gR09UQQ=="}'
+  -d '{"filename":"doc.pdf","content":"<base64>","protocol":"ipfs"}'
 
-# Create a cryptographic identity (RQ2)
-curl -X POST http://localhost:3000/identity \
+# Upload to ALL protocols (maximum resilience)
+curl -X POST http://localhost:3000/upload/all \
   -H "Content-Type: application/json" \
-  -d '{}'
+  -d '{"filename":"doc.pdf","content":"<base64>"}'
 
-# View research metrics (DHT latency, access control, streaming)
+# Download — auto-detects protocol from ID format
+curl http://localhost:3000/download/<cid-or-infohash-or-key>
+
+# Stream
+curl http://localhost:3000/stream/<id>
+```
+
+### Circles (E2E encrypted groups)
+
+```bash
+# Create identity
+curl -X POST http://localhost:3000/identity
+
+# Create circle
+curl -X POST http://localhost:3000/circle/create \
+  -H "Content-Type: application/json" \
+  -d '{"name":"evidence-2026","adminId":"<id>"}'
+
+# Invite member
+curl -X POST http://localhost:3000/circle/<circleId>/invite \
+  -H "Content-Type: application/json" \
+  -d '{"inviteePublicKey":"<pubkey>","adminId":"<id>"}'
+
+# Upload to circle (encrypted before routing)
+curl -X POST http://localhost:3000/upload \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"doc.pdf","content":"<base64>","circleId":"<circleId>"}'
+```
+
+### Network
+
+```bash
+# Gateway health (all protocols)
+curl http://localhost:3000/health
+
+# Available protocols
+curl http://localhost:3000/protocols
+
+# Connected peers (per protocol)
+curl http://localhost:3000/peers
+
+# Research metrics
 curl http://localhost:3000/metrics
 ```
 
-Two-node DHT setup (tests RQ1):
+---
 
-```bash
-docker compose up
-```
+## Content ID formats
 
-### `simulation/` — UX friction research agents (Python)
+| Protocol | ID format | Example |
+|----------|-----------|---------|
+| IPFS | CID (bafkrei...) | `bafkreidquf5h5gjt56gne4trwws6vv7iq...` |
+| BitTorrent | 40-char hex infohash | `3bb92f400a405718e662d9fc41ab9d06deea8fca` |
+| Hypercore | 64-char hex key | `9454d30ab70baeb37901144958342e00adf47a1e...` |
 
-Three user personas interact with the real P2P node. Friction points emerge from actual protocol behavior, not mock random() calls.
-
-- **Maya** — non-technical activist at Level Up UK
-- **Helena** — intermediate researcher at Datos Contra Feminicidio
-- **Tariq** — technical investigative journalist
-
-```bash
-# Run with node active at localhost:3000
-cd simulation
-python run_simulation.py --runs 5
-```
-
-### `SIMULATION_RESULTS.md` — Sample output
-
-Representative results from 5 simulation runs. Key finding:
-
-```
-Top friction points:
-  [3x] find_recovery_option: User doesn't know recovery exists
-  [2x] circle_selection: Circle not found — user doesn't know they need to create it first
-  [2x] find_contact: How do I find someone's GOTA address?
-```
-
-Device recovery is the highest abandonment point across all non-technical users. This is the core design problem of RQ2. The invite flow friction validates the Signal/WhatsApp bot integration as a primary onboarding path, not a feature.
+The gateway auto-routes downloads to the correct protocol based on the ID format.
 
 ---
 
-## Pilot organizations
+## Open research questions
 
-The following organizations have confirmed interest in participating in the validation phase:
+**RQ1 — Cross-protocol resilience**
+When content is seeded across IPFS, BitTorrent, and Hypercore simultaneously, how does availability change as peers churn? Does multi-protocol redundancy outperform single-protocol replication?
 
-- **Datos Contra Feminicidio** (femicidemap.net) — feminist data organization monitoring femicides across Latin America
-- **Feminizidmap Berlin** (feminizidmap.org) — documenting femicides in Germany
-- **Level Up UK** (welevelup.org) — feminist campaigning nonprofit, UK, active since 2012
+**RQ2 — Usable group access control without key management burden**
+Circles encrypt content before protocol routing. How do non-technical users join/leave groups and recover access after device loss — without a key server?
+
+**RQ3 — Browser-native P2P nodes**
+The PWA currently talks to the gateway API. Can it participate directly in the DHT via WebRTC?
+
+**RQ4 — Content moderation without central authority**
+A permanent public layer across multiple protocols raises a governance problem: how does a serverless network handle illegal content without a central moderator?
 
 ---
 
-## Sustainability
+## Repository structure
 
-GOTA's cost model differs fundamentally from centralized alternatives. Signal requires ~$50M/year to operate because it runs servers that scale with users. GOTA has no servers to scale — each new user who joins becomes a node that distributes load. Bootstrap infrastructure costs ~€30/month regardless of network size.
-
-Post-grant sustainability: organizational hosting fees for civil society groups that want managed nodes (€50–200/month), follow-on grants (Prototype Fund Germany, Open Technology Fund), and donations once the network reaches sufficient adoption.
+```
+node/
+  src/
+    index.ts              # Gateway API (Fastify)
+    adapters/
+      types.ts            # ProtocolAdapter interface
+      registry.ts         # Protocol router
+      ipfs.ts             # IPFS adapter (Helia/libp2p)
+      bittorrent.ts       # BitTorrent adapter (WebTorrent)
+      hypercore.ts        # Hypercore adapter (Hyperdrive/Hyperswarm)
+    circles.ts            # E2E encrypted groups (protocol-agnostic)
+  web/
+    index.html            # PWA frontend
+    manifest.json         # PWA manifest
+    sw.js                 # Service worker
+simulation/
+  run_simulation.py       # UX friction research orchestrator
+  gota_client.py          # HTTP client for real node
+  agents/                 # Three user personas
+docker-compose.yml        # Two-node DHT test setup
+```
 
 ---
 
 ## Stack
 
-- Protocol: IPFS/Helia, libp2p, Kademlia DHT
-- Crypto: libsodium (nacl), tweetnacl
-- Interface: Progressive Web App (TypeScript/React) — planned
-- Streaming: WebRTC datachannels — planned
-- API: Fastify
+- **Protocols:** IPFS (Helia/libp2p), BitTorrent (WebTorrent), Hypercore (Hyperdrive/Hyperswarm)
+- **Crypto:** libsodium (nacl/tweetnacl)
+- **API:** Fastify
+- **Frontend:** PWA (vanilla HTML/CSS/JS, no build step)
+
+---
+
+## Simulation results
+
+Three user personas interact with the real gateway. Key finding from 5 simulation runs:
+
+```
+Top friction points:
+  [3x] find_recovery_option: User doesn't know recovery exists
+  [2x] circle_selection: Circle not found
+  [2x] find_contact: How do I find someone's GOTA address?
+```
+
+Device recovery is the highest abandonment point. See `SIMULATION_RESULTS.md` for full data.
+
+---
+
+## Pilot organizations
+
+- **Datos Contra Feminicidio** (femicidemap.net) — feminist data organization monitoring femicides across Latin America
+- **Feminizidmap Berlin** (feminizidmap.org) — documenting femicides in Germany
+- **Level Up UK** (welevelup.org) — feminist campaigning nonprofit, UK
 
 ---
 
@@ -150,7 +219,7 @@ AGPL-3.0
 
 ## Author
 
-[Catalina Rojas Ugarte — Berlin, Germany](https://crojasu.github.io/)   
-Senior Software Engineer  
-Founder of [Femicide Media Watch](https://femicide-watch.up.railway.app)  
+[Catalina Rojas Ugarte — Berlin, Germany](https://crojasu.github.io/)
+Senior Software Engineer
+Founder of [Femicide Media Watch](https://femicide-watch.up.railway.app)
 github.com/crojasu
