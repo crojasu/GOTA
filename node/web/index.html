@@ -535,7 +535,7 @@
       }
     }
 
-    async function doDownload(rawId) {
+    async function doDownload(rawId, filename) {
       let contentId = rawId || searchInput.value.trim();
       if (!contentId) return;
 
@@ -552,18 +552,21 @@
         }
         const data = await res.json();
 
+        // Use original filename if available
+        const dlName = filename || data.filename || `gota-${contentId.slice(0, 12)}`;
+
         const bytes = base64ToBytes(data.content);
         const blob = new Blob([bytes]);
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `gota-${contentId.slice(0, 12)}`;
+        a.download = dlName;
         a.click();
         URL.revokeObjectURL(url);
 
         clearResults();
         showResult({
-          filename: `gota-${contentId.slice(0, 12)}`,
+          filename: dlName,
           id: contentId,
           protocol: data.protocol,
           sizeBytes: data.sizeBytes,
@@ -709,7 +712,7 @@
 
       const actions = file.ids.map(i =>
         `<button class="btn btn-secondary" onclick="copyToClipboard('${escapeHtml(i.id)}')">Copy ${i.protocol}</button>
-         <button class="btn btn-secondary" onclick="doDownload('${escapeHtml(i.id)}')">Download</button>`
+         <button class="btn btn-secondary" onclick="doDownload('${escapeHtml(i.id)}','${escapeHtml(file.filename)}')">Download</button>`
       ).join(' ');
 
       const ago = timeAgo(file.uploadedAt);

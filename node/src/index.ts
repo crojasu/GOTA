@@ -211,9 +211,14 @@ app.get<{
 
   try {
     const result = await registry.download(id)
+
+    // Look up original filename from index
+    const indexed = fileIndex.find(f => f.ids.some(i => i.id === id))
+
     return {
       cid: id,
       protocol: result.protocol,
+      filename: indexed?.filename ?? null,
       content: uint8ArrayToString(result.data, 'base64'),
       sizeBytes: result.sizeBytes,
       dhtLatencyMs: result.latencyMs,
