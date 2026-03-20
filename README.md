@@ -215,14 +215,6 @@ Device recovery is the highest abandonment point. See `SIMULATION_RESULTS.md` fo
 
 ---
 
-## Pilot organizations
-
-- **Datos Contra Feminicidio** (femicidemap.net) — feminist data organization monitoring femicides across Latin America
-- **Feminizidmap Berlin** (feminizidmap.org) — documenting femicides in Germany
-- **Level Up UK** (welevelup.org) — feminist campaigning nonprofit, UK
-
----
-
 ## License
 
 AGPL-3.0
