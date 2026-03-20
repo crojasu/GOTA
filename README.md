@@ -61,10 +61,11 @@ npm run dev
 
 The web UI lets you:
 - Search files by name across all networks
+- Filter by category: Documents, Images, Video, Audio, Code, Archives
 - Drag-and-drop upload to one or all networks
-- Download by clicking a result or pasting a content ID
+- Download by clicking a result or pasting a CID / infohash / key
 - Browse recent uploads
-- See live protocol status and peer counts
+- Live protocol status and peer counts
 
 ---
 
