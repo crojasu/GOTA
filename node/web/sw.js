@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gota-v2';
+const CACHE_NAME = 'gota-v3';
 const SHELL = ['/', '/manifest.json'];
 
 self.addEventListener('install', e => {
