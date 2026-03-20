@@ -70,9 +70,12 @@ export class HypercoreAdapter implements ProtocolAdapter {
     const filename = meta.filename || 'file'
     await drive.put(`/${filename}`, Buffer.from(data))
 
-    // Seed via swarm
+    // Seed via swarm (timeout after 5s if no peers)
     const discovery = this.swarm.join(drive.discoveryKey)
-    await discovery.flushed()
+    await Promise.race([
+      discovery.flushed(),
+      new Promise(r => setTimeout(r, 5000)),
+    ])
 
     const key = drive.key.toString('hex')
     this.drives.set(key, drive)
@@ -178,10 +181,13 @@ export class HypercoreAdapter implements ProtocolAdapter {
     drive = new Hyperdrive(this.store, key)
     await drive.ready()
 
-    // Join swarm to discover peers
+    // Join swarm to discover peers (timeout after 5s)
     const discovery = this.swarm.join(drive.discoveryKey)
     const done = drive.findingPeers()
-    await this.swarm.flush()
+    await Promise.race([
+      this.swarm.flush(),
+      new Promise(r => setTimeout(r, 5000)),
+    ])
     done()
 
     this.drives.set(hexKey, drive)

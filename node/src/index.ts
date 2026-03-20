@@ -48,6 +48,18 @@ registry.register(new HypercoreAdapter({
   dataDir: join(DATA_DIR, 'hypercore'),
 }))
 
+// ── Content index (in-memory, searchable) ─────────────────────────
+
+interface IndexedFile {
+  filename: string
+  ids: { id: string; protocol: string }[]
+  sizeBytes: number
+  circleId: string | null
+  uploadedAt: number
+}
+
+const fileIndex: IndexedFile[] = []
+
 // ── Circle metrics (protocol-agnostic) ────────────────────────────
 
 const circleMetrics = {
@@ -120,6 +132,14 @@ app.post<{
 
   const result = await registry.upload(data, { filename }, protocol)
 
+  fileIndex.unshift({
+    filename,
+    ids: [{ id: result.id, protocol: result.protocol }],
+    sizeBytes: data.length,
+    circleId: circleId ?? null,
+    uploadedAt: Date.now(),
+  })
+
   return {
     cid: result.id,
     protocol: result.protocol,
@@ -156,6 +176,14 @@ app.post<{
   }
 
   const results = await registry.uploadToAll(data, { filename })
+
+  fileIndex.unshift({
+    filename,
+    ids: results.map(r => ({ id: r.id, protocol: r.protocol })),
+    sizeBytes: data.length,
+    circleId: circleId ?? null,
+    uploadedAt: Date.now(),
+  })
 
   return {
     ids: results,
@@ -417,6 +445,35 @@ app.get('/protocols', async () => {
       peers: h.peers,
     })),
   }
+})
+
+// ── Search & browse ───────────────────────────────────────────────
+
+/**
+ * GET /search?q=<query>
+ * Search uploaded files by filename.
+ */
+app.get<{
+  Querystring: { q?: string }
+}>('/search', async (req) => {
+  const query = (req.query.q ?? '').toLowerCase().trim()
+  if (!query) return { results: fileIndex.slice(0, 50) }
+
+  const results = fileIndex.filter(f =>
+    f.filename.toLowerCase().includes(query)
+  )
+  return { results }
+})
+
+/**
+ * GET /files
+ * List recent uploads.
+ */
+app.get<{
+  Querystring: { limit?: string }
+}>('/files', async (req) => {
+  const limit = Math.min(parseInt(req.query.limit ?? '50'), 200)
+  return { files: fileIndex.slice(0, limit), total: fileIndex.length }
 })
 
 // ── Start ─────────────────────────────────────────────────────────

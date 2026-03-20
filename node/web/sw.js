@@ -19,7 +19,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
   // Only cache shell assets, not API calls
-  if (url.pathname.startsWith('/upload') ||
+  if (url.pathname.startsWith('/search') ||
+      url.pathname.startsWith('/files') ||
+      url.pathname.startsWith('/upload') ||
       url.pathname.startsWith('/download') ||
       url.pathname.startsWith('/stream') ||
       url.pathname.startsWith('/health') ||

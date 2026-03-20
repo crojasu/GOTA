@@ -398,14 +398,14 @@
         <input
           type="text"
           id="search-input"
-          placeholder="Paste a CID, infohash, or magnet link..."
+          placeholder="Search files or paste a CID / infohash / key..."
           autocomplete="off"
           spellcheck="false"
         >
-        <button id="search-btn">Download</button>
+        <button id="search-btn">Search</button>
       </div>
       <div class="search-hint">
-        IPFS CIDs (bafkrei...), BitTorrent infohashes (40-char hex), and Hypercore keys (64-char hex) auto-detected
+        Search by filename, or paste an exact ID to download directly
       </div>
     </div>
 
@@ -442,12 +442,16 @@
 
     <!-- Results -->
     <div id="results"></div>
+
+    <!-- Recent files -->
+    <div class="section-label" style="margin-top:2rem" id="recent-label"></div>
+    <div id="recent-files"></div>
   </div>
 
   <div class="toast-container" id="toasts"></div>
 
   <script>
-    const API = '';  // Same origin
+    const API = '';
 
     // ── Status polling ────────────────────
 
@@ -475,23 +479,67 @@
     updateStatus();
     setInterval(updateStatus, 5000);
 
-    // ── Search / Download ─────────────────
+    // ── Search ────────────────────────────
 
     const searchInput = document.getElementById('search-input');
     const searchBtn = document.getElementById('search-btn');
 
-    searchBtn.addEventListener('click', () => doDownload());
+    searchBtn.addEventListener('click', () => doSearch());
     searchInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') doDownload();
+      if (e.key === 'Enter') doSearch();
     });
 
-    async function doDownload() {
-      const id = searchInput.value.trim();
-      if (!id) return;
+    // Debounced live search
+    let searchTimer;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const q = searchInput.value.trim();
+      if (q.length >= 2 && !isContentId(q)) {
+        searchTimer = setTimeout(() => doSearch(), 300);
+      }
+    });
 
-      // Extract infohash from magnet link
-      let contentId = id;
-      const magnetMatch = id.match(/btih:([a-f0-9]{40})/i);
+    function isContentId(str) {
+      if (str.startsWith('bafkrei') || str.startsWith('bafy')) return true;
+      if (/^[a-f0-9]{40}$/i.test(str)) return true;
+      if (/^[a-f0-9]{64}$/i.test(str)) return true;
+      if (str.startsWith('magnet:')) return true;
+      return false;
+    }
+
+    async function doSearch() {
+      const q = searchInput.value.trim();
+      if (!q) return;
+
+      // If it's a content ID, download directly
+      if (isContentId(q)) {
+        return doDownload(q);
+      }
+
+      // Otherwise, search by filename
+      try {
+        const res = await fetch(`${API}/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        clearResults();
+
+        if (data.results.length === 0) {
+          document.getElementById('results').innerHTML = `
+            <div class="loading-text">No files found for "${escapeHtml(q)}"</div>
+          `;
+          return;
+        }
+
+        data.results.forEach(file => showFileCard(file));
+      } catch (err) {
+        toast('Search failed', 'error');
+      }
+    }
+
+    async function doDownload(rawId) {
+      let contentId = rawId || searchInput.value.trim();
+      if (!contentId) return;
+
+      const magnetMatch = contentId.match(/btih:([a-f0-9]{40})/i);
       if (magnetMatch) contentId = magnetMatch[1];
 
       showLoading('Fetching from network...');
@@ -504,7 +552,6 @@
         }
         const data = await res.json();
 
-        // Decode base64 content and trigger download
         const bytes = base64ToBytes(data.content);
         const blob = new Blob([bytes]);
         const url = URL.createObjectURL(blob);
@@ -514,6 +561,7 @@
         a.click();
         URL.revokeObjectURL(url);
 
+        clearResults();
         showResult({
           filename: `gota-${contentId.slice(0, 12)}`,
           id: contentId,
@@ -580,10 +628,9 @@
         }
 
         const data = await res.json();
+        clearResults();
 
         if (protocol === 'all') {
-          // Multiple results
-          clearResults();
           data.ids.forEach(item => {
             showResult({
               filename: file.name,
@@ -604,17 +651,88 @@
           });
           toast(`Uploaded to ${data.protocol}`, 'success');
         }
+
+        // Refresh recent files
+        loadRecentFiles();
       } catch (err) {
         clearResults();
         toast(err.message, 'error');
       }
     }
 
+    // ── Recent files ──────────────────────
+
+    async function loadRecentFiles() {
+      try {
+        const res = await fetch(`${API}/files?limit=20`);
+        const data = await res.json();
+        const container = document.getElementById('recent-files');
+        const label = document.getElementById('recent-label');
+
+        if (data.files.length === 0) {
+          label.textContent = '';
+          container.innerHTML = '';
+          return;
+        }
+
+        label.textContent = `Recent files (${data.total})`;
+        container.innerHTML = '';
+        data.files.forEach(file => {
+          const card = document.createElement('div');
+          card.className = 'result-card';
+          card.innerHTML = buildFileCardHtml(file);
+          container.appendChild(card);
+        });
+      } catch {}
+    }
+
+    loadRecentFiles();
+
     // ── UI Helpers ────────────────────────
+
+    function showFileCard(file) {
+      const results = document.getElementById('results');
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = buildFileCardHtml(file);
+      results.appendChild(card);
+    }
+
+    function buildFileCardHtml(file) {
+      const badges = file.ids.map(i =>
+        `<span class="protocol-badge ${i.protocol}">${i.protocol}</span>`
+      ).join(' ');
+
+      const ids = file.ids.map(i =>
+        `<div class="result-id">${escapeHtml(i.id)}</div>`
+      ).join('');
+
+      const actions = file.ids.map(i =>
+        `<button class="btn btn-secondary" onclick="copyToClipboard('${escapeHtml(i.id)}')">Copy ${i.protocol}</button>
+         <button class="btn btn-secondary" onclick="doDownload('${escapeHtml(i.id)}')">Download</button>`
+      ).join(' ');
+
+      const ago = timeAgo(file.uploadedAt);
+
+      return `
+        <div class="result-header">
+          <div class="result-filename">${escapeHtml(file.filename)}</div>
+          <div>${badges}</div>
+        </div>
+        ${ids}
+        <div class="result-meta">
+          <span>${formatBytes(file.sizeBytes)}</span>
+          <span>${ago}</span>
+          ${file.circleId ? '<span>encrypted</span>' : ''}
+        </div>
+        <div class="result-actions">
+          ${actions}
+        </div>
+      `;
+    }
 
     function showResult({ filename, id, protocol, sizeBytes, latencyMs, action }) {
       const results = document.getElementById('results');
-      // Remove loading indicator if present
       const loader = results.querySelector('.loading-text');
       if (loader) loader.remove();
 
@@ -628,13 +746,11 @@
         <div class="result-id">${escapeHtml(id)}</div>
         <div class="result-meta">
           <span>${formatBytes(sizeBytes)}</span>
-          ${latencyMs != null ? `<span>${latencyMs}ms latency</span>` : ''}
+          ${latencyMs != null ? `<span>${latencyMs}ms</span>` : ''}
           <span>${action}</span>
         </div>
         <div class="result-actions">
-          <button class="btn btn-secondary" onclick="copyToClipboard('${escapeHtml(id)}')">
-            Copy ID
-          </button>
+          <button class="btn btn-secondary" onclick="copyToClipboard('${escapeHtml(id)}')">Copy ID</button>
         </div>
       `;
       results.prepend(card);
@@ -671,10 +787,7 @@
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = reader.result.split(',')[1];
-          resolve(base64);
-        };
+        reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
@@ -694,13 +807,21 @@
       return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${sizes[i]}`;
     }
 
+    function timeAgo(ts) {
+      const diff = Date.now() - ts;
+      if (diff < 60000) return 'just now';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+      return `${Math.floor(diff / 86400000)}d ago`;
+    }
+
     function escapeHtml(str) {
       const div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
     }
 
-    // ── Service Worker registration ───────
+    // ── Service Worker ────────────────────
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});

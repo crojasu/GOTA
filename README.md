@@ -43,6 +43,7 @@ GOTA is the missing usability layer. One web interface to search, upload, and do
 ```
 
 - **Upload once, seed everywhere** — a single file is published to IPFS, BitTorrent, and Hypercore simultaneously
+- **Search by name** — type a filename and find it across all networks, no need to know protocol IDs
 - **Auto-detect on download** — paste a CID, infohash, or Hypercore key and GOTA routes to the right protocol
 - **Circles** — E2E encrypted groups; content is encrypted before reaching any network
 - **No install** — runs as a PWA in any browser
@@ -59,8 +60,10 @@ npm run dev
 ```
 
 The web UI lets you:
+- Search files by name across all networks
 - Drag-and-drop upload to one or all networks
-- Paste any content ID to download
+- Download by clicking a result or pasting a content ID
+- Browse recent uploads
 - See live protocol status and peer counts
 
 ---
@@ -79,6 +82,12 @@ curl -X POST http://localhost:3000/upload \
 curl -X POST http://localhost:3000/upload/all \
   -H "Content-Type: application/json" \
   -d '{"filename":"doc.pdf","content":"<base64>"}'
+
+# Search files by name
+curl http://localhost:3000/search?q=panama
+
+# List recent uploads
+curl http://localhost:3000/files?limit=20
 
 # Download — auto-detects protocol from ID format
 curl http://localhost:3000/download/<cid-or-infohash-or-key>
